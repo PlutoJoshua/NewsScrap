@@ -1,0 +1,39 @@
+[project]
+name = "newsscrap"
+version = "0.1.0"
+description = "경제/AI 뉴스 스크래핑 → AI 요약 → 숏츠 영상 자동 생성 파이프라인"
+requires-python = ">=3.11"
+dependencies = [
+    # Scraping
+    "feedparser>=6.0",
+    "requests>=2.31",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "newspaper3k>=0.2.8",
+
+    # Data
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+summarizer = [
+    "ollama>=0.1",
+    "openai>=1.0",
+    "anthropic>=0.18",
+]
+tts = [
+    "edge-tts>=6.1",
+]
+video = [
+    "moviepy>=1.0",
+    "Pillow>=10.0",
+    "faster-whisper>=0.10",
+]
+all = ["newsscrap[summarizer,tts,video]"]
+dev = ["pytest>=7.0", "pytest-asyncio>=0.21"]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
