@@ -11,7 +11,7 @@ from src.storage.models import Briefing
 from src.subtitles.subtitle_generator import generate_subtitles, write_srt
 from src.summarizer.factory import create_llm_provider
 from src.tts.factory import create_tts_provider
-from src.video.background import download_background
+from src.video.background import download_backgrounds_for_segments
 from src.video.composer import compose_shorts
 
 logger = logging.getLogger(__name__)
@@ -89,9 +89,9 @@ async def run_pipeline(
 
     # === Phase 5: 영상 합성 ===
     logger.info("=== Phase 5: 영상 합성 ===")
-    bg_path = download_background(
+    bg_paths = download_backgrounds_for_segments(
+        segments=briefing.segments,
         output_dir=str(base_dir / "videos"),
-        query="technology abstract",
     )
 
     output_dir = base_dir / "output" / date
@@ -101,8 +101,10 @@ async def run_pipeline(
     compose_shorts(
         audio_path=audio_path,
         subtitles=subtitles,
-        background_path=bg_path,
+        background_paths=bg_paths,
         output_path=output_path,
+        segments=briefing.segments,
+        word_boundaries=tts_result.word_boundaries,
         title_text=title,
     )
 

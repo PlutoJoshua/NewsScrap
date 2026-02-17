@@ -62,7 +62,7 @@ dedup:
 summarizer:
   ollama:
     base_url: "http://localhost:11434"
-    model: "gemma:latest"
+    model: "gemma3:12b"
     temperature: 0.3
     max_tokens: 2048
   openai:

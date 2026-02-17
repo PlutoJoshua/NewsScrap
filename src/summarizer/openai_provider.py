@@ -74,7 +74,7 @@ def _format_articles(articles: list[Article]) -> str:
     parts = []
     for i, a in enumerate(articles):
         title = a.content.title if a.content else a.rss_title
-        body = (a.content.body[:500] if a.content else "")
+        body = (a.content.body[:1000] if a.content else "")
         parts.append(
             f"[{i}] 제목: {title}\n"
             f"    출처: {a.source_name} | 카테고리: {a.category}\n"

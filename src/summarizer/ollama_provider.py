@@ -86,7 +86,7 @@ class OllamaProvider(LLMProvider):
         parts = []
         for i, a in enumerate(articles):
             title = a.content.title if a.content else a.rss_title
-            body = (a.content.body[:500] if a.content else "")
+            body = (a.content.body[:1000] if a.content else "")
             parts.append(
                 f"[{i}] 제목: {title}\n"
                 f"    출처: {a.source_name} | 카테고리: {a.category}\n"
@@ -118,12 +118,35 @@ class OllamaProvider(LLMProvider):
                 if isinstance(idx, int) and 0 <= idx < len(articles):
                     source_ids.append(articles[idx].id)
 
+            keywords = item.get("keywords", [])
+            if not keywords:
+                keywords = _extract_fallback_keywords(
+                    item.get("headline", ""), item.get("summary", ""),
+                )
+
             segments.append(
                 BriefingSegment(
                     headline=item.get("headline", ""),
                     summary=item.get("summary", ""),
-                    keywords=item.get("keywords", []),
+                    keywords=keywords,
                     source_articles=source_ids,
                 )
             )
         return segments
+
+
+# 키워드 추출 폴백용 매칭 사전
+_KEYWORD_PATTERNS = [
+    "GDP", "AI", "금리", "환율", "주식", "코인", "비트코인", "반도체",
+    "인플레이션", "부동산", "투자", "수출", "무역", "스타트업", "기술",
+    "금융", "경제", "자동차", "배터리", "에너지", "소비", "물가",
+    "인공지능", "로봇", "클라우드", "데이터", "제조", "규제", "정책",
+    "일본", "미국", "중국", "한국", "유럽",
+]
+
+
+def _extract_fallback_keywords(headline: str, summary: str) -> list[str]:
+    """headline/summary에서 키워드를 자동 추출 (LLM이 keywords를 비웠을 때)."""
+    text = f"{headline} {summary}"
+    found = [kw for kw in _KEYWORD_PATTERNS if kw in text]
+    return found[:3] if found else ["경제"]
