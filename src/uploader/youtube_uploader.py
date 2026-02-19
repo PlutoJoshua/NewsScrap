@@ -78,14 +78,15 @@ class YouTubeUploader:
         """브리핑 내용으로 YouTube 메타데이터 생성."""
         title = self.title_template.format(date=date)
 
-        # 설명: 세그먼트 헤드라인 나열
+        # 설명: 세그먼트 헤드라인 + 채널 브랜딩 + SEO 해시태그
         headlines = "\n".join(
             f"• {s.headline}" for s in briefing.segments
         )
         description = (
-            f"📰 {date} 오늘의 주요 경제 뉴스 브리핑\n\n"
+            f"📰 {date} 경제뉴스 | 환율 금리 미국증시 브리핑\n\n"
             f"{headlines}\n\n"
-            "#경제뉴스 #오늘의뉴스 #숏츠 #경제브리핑"
+            "머니샌즈 — 시간처럼 흐르는 시장, 모래처럼 쌓이는 정보.\n\n"
+            "#환율 #경제뉴스 #금리 #미국증시 #달러 #경제브리핑 #숏츠"
         )
 
         # 태그: 기본 + 세그먼트 키워드

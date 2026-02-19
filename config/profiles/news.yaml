@@ -75,7 +75,8 @@ uploader:
   youtube:
     privacy: "private"
     category_id: "25"
-    default_tags: ["경제", "뉴스", "숏츠", "브리핑", "AI"]
-    title_template: "📰 {date} 오늘의 경제 뉴스 #Shorts"
+    default_tags: ["환율", "경제뉴스", "금리", "미국증시", "달러", "경제", "숏츠", "브리핑", "머니샌즈"]
+    title_template: "📰 {date} 경제뉴스 환율 금리 브리핑 #Shorts"
+    channel_description: "머니샌즈 (Money Sands)\n시간처럼 흐르는 시장, 모래처럼 쌓이는 정보.\n환율, 금리, 달러 흐름을 60초 안에 정리합니다.\n매일 올라오는 경제 쇼츠 브리핑."
     credentials_path: "config/news_client_secret.json"
     token_path: "config/news_youtube_token.json"
