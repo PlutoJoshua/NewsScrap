@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections import defaultdict
+from itertools import islice
 from pathlib import Path
 
 from src.storage.json_store import JSONStore
-from src.storage.models import Briefing
+from src.storage.models import Article, Briefing
 from src.subtitles.subtitle_generator import generate_subtitles, write_srt
 from src.summarizer.factory import create_llm_provider
 from src.tts.factory import create_tts_provider
@@ -49,7 +51,7 @@ async def run_pipeline(
             return None
 
         max_articles = top_n or config["summarizer"]["briefing"]["max_articles"]
-        target_articles = articles_with_body[:max_articles]
+        target_articles = _select_diverse_articles(articles_with_body, max_articles)
 
         provider = create_llm_provider(config)
         logger.info(f"LLM: {provider.provider_name}, 기사: {len(target_articles)}건")
@@ -110,3 +112,30 @@ async def run_pipeline(
 
     logger.info(f"🎬 최종 영상: {output_path}")
     return output_path
+
+
+def _select_diverse_articles(
+    articles: list[Article], max_count: int
+) -> list[Article]:
+    """소스별 라운드로빈으로 다양한 기사를 선택."""
+    by_source: dict[str, list[Article]] = defaultdict(list)
+    for a in articles:
+        by_source[a.source_name].append(a)
+
+    selected: list[Article] = []
+    iterators = {src: iter(arts) for src, arts in by_source.items()}
+
+    while len(selected) < max_count and iterators:
+        exhausted = []
+        for src, it in iterators.items():
+            if len(selected) >= max_count:
+                break
+            article = next(it, None)
+            if article is None:
+                exhausted.append(src)
+            else:
+                selected.append(article)
+        for src in exhausted:
+            del iterators[src]
+
+    return selected

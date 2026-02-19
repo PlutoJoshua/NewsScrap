@@ -49,7 +49,7 @@ class OllamaProvider(LLMProvider):
             f"- {s.headline}: {s.summary}" for s in segments
         )
         script_prompt = SHORTS_SCRIPT_PROMPT.format(briefing=briefing_summary)
-        shorts_script = self._generate(script_prompt)
+        shorts_script = self._generate(script_prompt, max_tokens=512)
 
         return Briefing(
             date=date,
@@ -58,7 +58,7 @@ class OllamaProvider(LLMProvider):
             shorts_script=shorts_script,
         )
 
-    def _generate(self, prompt: str) -> str:
+    def _generate(self, prompt: str, max_tokens: int | None = None) -> str:
         url = f"{self.base_url}/api/generate"
         payload = {
             "model": self.model,
@@ -66,7 +66,7 @@ class OllamaProvider(LLMProvider):
             "stream": False,
             "options": {
                 "temperature": self.temperature,
-                "num_predict": self.max_tokens,
+                "num_predict": max_tokens or self.max_tokens,
             },
         }
 
@@ -101,9 +101,30 @@ class OllamaProvider(LLMProvider):
         try:
             start = raw.index("{")
             end = raw.rindex("}") + 1
-            data = json.loads(raw[start:end])
+            json_str = raw[start:end]
+            data = json.loads(json_str)
         except (ValueError, json.JSONDecodeError):
             logger.warning("브리핑 JSON 파싱 실패, 원본 텍스트로 폴백")
+            logger.debug("LLM 원본 출력: %s", raw[:500])
+            return [
+                BriefingSegment(
+                    headline="오늘의 뉴스 요약",
+                    summary=raw[:500],
+                )
+            ]
+
+        # segments / articles 등 다양한 키명 허용
+        raw_segments = (
+            data.get("segments")
+            or data.get("articles")
+            or data.get("news")
+            or []
+        )
+        if not raw_segments:
+            logger.warning(
+                "JSON에 segments가 비어있음. keys=%s, 원본 텍스트로 폴백",
+                list(data.keys()),
+            )
             return [
                 BriefingSegment(
                     headline="오늘의 뉴스 요약",
@@ -112,22 +133,31 @@ class OllamaProvider(LLMProvider):
             ]
 
         segments = []
-        for item in data.get("segments", []):
+        for item in raw_segments:
             source_ids = []
             for idx in item.get("source_indices", []):
                 if isinstance(idx, int) and 0 <= idx < len(articles):
                     source_ids.append(articles[idx].id)
 
+            headline = (
+                item.get("headline")
+                or item.get("title")
+                or ""
+            )
+            summary = (
+                item.get("summary")
+                or item.get("description")
+                or ""
+            )
+
             keywords = item.get("keywords", [])
             if not keywords:
-                keywords = _extract_fallback_keywords(
-                    item.get("headline", ""), item.get("summary", ""),
-                )
+                keywords = _extract_fallback_keywords(headline, summary)
 
             segments.append(
                 BriefingSegment(
-                    headline=item.get("headline", ""),
-                    summary=item.get("summary", ""),
+                    headline=headline,
+                    summary=summary,
                     keywords=keywords,
                     source_articles=source_ids,
                 )
