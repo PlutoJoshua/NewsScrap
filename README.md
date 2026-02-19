@@ -1,15 +1,21 @@
 # NewsScrap
 
-경제/AI 뉴스 자동 수집 → AI 요약 → 숏츠 영상 생성 파이프라인
+YouTube 숏츠 자동 생성 파이프라인 — 멀티 프로필 지원
 
-## 파이프라인
+## 프로필
+
+### 뉴스 브리핑 (`--profile news`)
+경제/AI 뉴스 자동 수집 → AI 요약 → 숏츠 영상 생성 → YouTube 업로드
 
 ```
-뉴스 수집 (RSS + 크롤링)
-    → AI 요약 (Ollama / OpenAI / Claude)
-    → TTS 음성 (edge-tts / Google Cloud)
-    → 자막 생성 (타임스탬프 기반)
-    → 영상 합성 (9:16, 1080x1920)
+RSS 뉴스 수집 → AI 브리핑 → TTS → 자막 → 영상 합성 → 업로드
+```
+
+### 명언/격언 (`--profile quotes`)
+매일 1개 명언 선택 → AI 해설 → 숏츠 영상 생성 → YouTube 업로드
+
+```
+명언 선택 (JSON DB) → AI 해설 스크립트 → TTS → 자막 → 영상 합성 → 업로드
 ```
 
 ## 설치
@@ -20,11 +26,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Ollama 사용 시:
+Ollama (로컬 LLM):
 ```bash
 brew install ollama
 ollama serve
-ollama pull gemma
+ollama pull gemma3:12b
 ```
 
 ## 환경변수
@@ -44,17 +50,39 @@ PEXELS_API_KEY=              # 배경 영상 (무료, pexels.com/api 에서 발�
 
 ## 사용법
 
-### 전체 파이프라인
+### 뉴스 파이프라인
 
 ```bash
-# 스크래핑 → 요약 → TTS → 자막 → 영상
-python3 scripts/run_pipeline.py --top 3
+# 전체 파이프라인 (스크래핑 → 요약 → TTS → 자막 → 영상)
+python3 scripts/run_pipeline.py --profile news
 
 # 기존 기사로 요약~영상만
-python3 scripts/run_pipeline.py --skip-scrape --top 5
+python3 scripts/run_pipeline.py --profile news --skip-scrape
 
 # 기존 브리핑으로 TTS~영상만
-python3 scripts/run_pipeline.py --skip-scrape --skip-summarize
+python3 scripts/run_pipeline.py --profile news --skip-scrape --skip-summarize
+
+# 기사 수 지정
+python3 scripts/run_pipeline.py --profile news --top 5
+```
+
+### 명언 파이프라인
+
+```bash
+# 전체 파이프라인 (명언 선택 → 해설 → TTS → 영상)
+python3 scripts/run_pipeline.py --profile quotes
+
+# 특정 날짜
+python3 scripts/run_pipeline.py --profile quotes --date 2026-02-19
+```
+
+### 공통 옵션
+
+```bash
+--profile {news,quotes}   # 프로필 선택 (기본: news)
+--date YYYY-MM-DD         # 대상 날짜
+--no-upload               # 업로드 건너뛰기
+--upload-only             # 기존 영상 업로드만 (news)
 ```
 
 ### 개별 실행
@@ -63,11 +91,41 @@ python3 scripts/run_pipeline.py --skip-scrape --skip-summarize
 # 스크래핑만
 python3 scripts/run_scrape.py
 python3 scripts/run_scrape.py --feeds hankyung_economy,etnews_ai
-python3 scripts/run_scrape.py --date 2026-02-16
 
 # 요약만
 python3 scripts/run_summarize.py --top 5
-LLM_PROVIDER=openai python3 scripts/run_summarize.py
+```
+
+## YouTube 업로드 설정
+
+### 1. Google Cloud Console
+
+1. [console.cloud.google.com](https://console.cloud.google.com/) 접속
+2. 프로젝트 생성
+3. **API 및 서비스 → 라이브러리** → `YouTube Data API v3` 활성화
+4. **API 및 서비스 → 사용자 인증 정보** → OAuth 2.0 클라이언트 ID 생성 (데스크톱 앱)
+5. JSON 다운로드
+
+### 2. 채널별 설정
+
+| 채널 | OAuth JSON 파일 | 토큰 파일 |
+|------|----------------|-----------|
+| 뉴스 | `config/news_client_secret.json` | `config/news_youtube_token.json` |
+| 명언 | `config/quotes_client_secret.json` | `config/quotes_youtube_token.json` |
+
+### 3. 최초 인증 (채널별 1회)
+
+```bash
+python3 scripts/youtube_auth.py --profile news
+python3 scripts/youtube_auth.py --profile quotes
+```
+
+### 4. 업로드 활성화
+
+`config/profiles/news.yaml` 또는 `config/profiles/quotes.yaml`에서:
+```yaml
+uploader:
+  enabled: true
 ```
 
 ## 뉴스 소스
@@ -81,71 +139,107 @@ LLM_PROVIDER=openai python3 scripts/run_summarize.py
 | 조선일보 경제 | RSS | economy |
 | AI타임스 | HTML 크롤링 | ai |
 
-`config/config.yaml`에서 피드 추가/비활성화 가능
+`config/profiles/news.yaml`에서 피드 추가/비활성화 가능
+
+## 명언 데이터베이스
+
+`data/quotes/quotes.json`에 수동 관리:
+
+```json
+{
+  "id": "q001",
+  "text": "삶이 있는 한 희망은 있다.",
+  "author": "키케로",
+  "category": "인생",
+  "used_dates": []
+}
+```
+
+- 카테고리: 인생, 성공, 지혜, 용기, 사랑
+- 사용된 명언은 `used_dates`에 자동 기록
+- 미사용 명언 우선 선택, 전부 사용 시 가장 오래된 것 재사용
 
 ## 프로젝트 구조
 
 ```
+config/
+├── config.yaml              # 공통 설정 (LLM, TTS, 영상 스펙)
+├── profiles/
+│   ├── news.yaml            # 뉴스 프로필 (피드, 브리핑, 업로더)
+│   └── quotes.yaml          # 명언 프로필 (콘텐츠, TTS 목소리, 업로더)
+└── fonts/
+
 src/
-├── scraper/              # 뉴스 수집
-│   ├── rss_fetcher.py    # RSS 피드 수집
-│   ├── article_crawler.py # 본문 크롤링
-│   ├── dedup.py          # 중복 제거
-│   ├── rate_limiter.py   # 요청 간격 제한
-│   └── parsers/          # 사이트별 파서
-│       ├── hankyung.py
-│       ├── chosun.py
-│       ├── etnews.py
-│       ├── aitimes.py
-│       └── generic.py    # newspaper3k 폴백
-├── summarizer/           # AI 요약
+├── config/
+│   └── profile_loader.py    # 프로필 설정 로더
+├── scraper/                 # 뉴스 수집
+│   ├── rss_fetcher.py
+│   ├── article_crawler.py
+│   ├── dedup.py
+│   └── parsers/             # 사이트별 파서
+├── content/
+│   └── quotes_picker.py     # 명언 선택기
+├── summarizer/              # AI 요약/스크립트 생성
 │   ├── ollama_provider.py
 │   ├── openai_provider.py
 │   ├── claude_provider.py
-│   └── factory.py        # LLM_PROVIDER로 스위칭
-├── tts/                  # 음성 합성
+│   ├── prompt_templates.py  # 뉴스 + 명언 프롬프트
+│   └── factory.py
+├── tts/                     # 음성 합성
 │   ├── edge_tts_provider.py
 │   ├── google_tts_provider.py
-│   └── factory.py        # TTS_PROVIDER로 스위칭
-├── subtitles/            # 자막 생성
+│   └── factory.py
+├── subtitles/
 │   └── subtitle_generator.py
-├── video/                # 영상 합성
-│   ├── background.py     # Pexels 배경 영상
-│   └── composer.py       # moviepy 합성
-├── storage/              # 데이터 저장
-│   ├── models.py         # Pydantic 모델
-│   └── json_store.py     # 날짜별 JSON
-└── pipeline.py           # 전체 오케스트레이터
+├── video/
+│   ├── background.py        # Pexels 배경 영상
+│   └── composer.py          # 뉴스 + 명언 영상 합성
+├── uploader/
+│   └── youtube_uploader.py  # YouTube 업로드
+├── storage/
+│   ├── models.py
+│   └── json_store.py
+├── pipeline.py              # 뉴스 파이프라인
+└── pipeline_quotes.py       # 명언 파이프라인
 
 scripts/
-├── run_scrape.py         # 스크래핑 CLI
-├── run_summarize.py      # 요약 CLI
-└── run_pipeline.py       # 전체 파이프라인 CLI
+├── run_pipeline.py          # 메인 CLI (--profile)
+├── run_scrape.py
+├── run_summarize.py
+└── youtube_auth.py          # YouTube OAuth 인증
 
-config/
-├── config.yaml           # RSS 피드, 모델 설정
-└── .env.example
-
-data/                     # 런타임 데이터 (gitignore)
-├── articles/YYYY-MM-DD/
-├── summaries/YYYY-MM-DD/
-├── audio/YYYY-MM-DD/
-├── subtitles/YYYY-MM-DD/
-└── output/YYYY-MM-DD/    # 최종 영상
+data/
+├── news/                    # 뉴스 데이터
+│   ├── articles/YYYY-MM-DD/
+│   ├── summaries/YYYY-MM-DD/
+│   ├── audio/YYYY-MM-DD/
+│   ├── subtitles/YYYY-MM-DD/
+│   └── output/YYYY-MM-DD/
+└── quotes/                  # 명언 데이터
+    ├── quotes.json          # 명언 DB
+    ├── selected/YYYY-MM-DD/
+    ├── scripts/YYYY-MM-DD/
+    ├── audio/YYYY-MM-DD/
+    └── output/YYYY-MM-DD/
 ```
 
-## 출력 영상 스펙
+## 영상 스펙
 
-- 해상도: 1080x1920 (9:16)
-- FPS: 30
-- 코덱: H.264 + AAC
-- 최대 길이: 60초
+| 항목 | 뉴스 | 명언 |
+|------|------|------|
+| 해상도 | 1080x1920 (9:16) | 1080x1920 (9:16) |
+| FPS | 30 | 30 |
+| 코덱 | H.264 + AAC | H.264 + AAC |
+| 최대 길이 | 59초 | 59초 |
+| 배경 | 키워드별 멀티 배경 | 자연/추상 단일 배경 |
+| 특징 | 뉴스 타이틀 + 자막 | 명언 텍스트 + 저자 + 해설 자막 |
 
 ## 기술 스택
 
 - **스크래핑**: feedparser, requests, BeautifulSoup, newspaper3k
-- **AI 요약**: Ollama (무료, 기본) / OpenAI / Claude
-- **TTS**: edge-tts (무료, 기본) / Google Cloud TTS
+- **AI**: Ollama gemma3:12b (기본) / OpenAI / Claude
+- **TTS**: edge-tts (기본, 무료) / Google Cloud TTS
 - **영상**: moviepy, ffmpeg
 - **배경**: Pexels API (무료)
-- **데이터**: Pydantic, JSON
+- **업로드**: YouTube Data API v3, OAuth2
+- **데이터**: Pydantic, JSON, YAML

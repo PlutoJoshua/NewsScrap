@@ -1,43 +1,87 @@
 """YouTube OAuth2 최초 인증 스크립트.
 
 사용법:
-    python scripts/youtube_auth.py
+    python scripts/youtube_auth.py --profile news
+    python scripts/youtube_auth.py --profile quotes
 
-1회만 실행하면 됩니다. 브라우저에서 Google 계정 로그인 후
-refresh token이 config/youtube_token.json에 저장됩니다.
+프로필별 1회만 실행하면 됩니다. 브라우저에서 Google 계정 로그인 후
+refresh token이 저장됩니다.
 이후 파이프라인 실행 시 자동으로 토큰이 갱신됩니다.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
+import sys
 from pathlib import Path
 
+import yaml
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
-CREDENTIALS_PATH = PROJECT_ROOT / "config" / "client_secret.json"
-TOKEN_PATH = PROJECT_ROOT / "config" / "youtube_token.json"
+# 프로필별 기본 경로
+_PROFILE_PATHS = {
+    "news": {
+        "credentials": "config/news_client_secret.json",
+        "token": "config/news_youtube_token.json",
+    },
+    "quotes": {
+        "credentials": "config/quotes_client_secret.json",
+        "token": "config/quotes_youtube_token.json",
+    },
+}
 
 
 def main() -> None:
-    if not CREDENTIALS_PATH.exists():
+    parser = argparse.ArgumentParser(description="YouTube OAuth2 인증")
+    parser.add_argument(
+        "--profile", required=True, choices=["news", "quotes"],
+        help="인증할 프로필 (news: 뉴스 채널, quotes: 명언 채널)",
+    )
+    args = parser.parse_args()
+
+    # 프로필 설정에서 경로 로드 시도, 없으면 기본값 사용
+    profile_path = PROJECT_ROOT / "config" / "profiles" / f"{args.profile}.yaml"
+    if profile_path.exists():
+        with open(profile_path, "r", encoding="utf-8") as f:
+            profile_config = yaml.safe_load(f) or {}
+        yt_config = profile_config.get("uploader", {}).get("youtube", {})
+        creds_path = PROJECT_ROOT / yt_config.get(
+            "credentials_path", _PROFILE_PATHS[args.profile]["credentials"]
+        )
+        token_path = PROJECT_ROOT / yt_config.get(
+            "token_path", _PROFILE_PATHS[args.profile]["token"]
+        )
+    else:
+        paths = _PROFILE_PATHS[args.profile]
+        creds_path = PROJECT_ROOT / paths["credentials"]
+        token_path = PROJECT_ROOT / paths["token"]
+
+    print(f"프로필: {args.profile}")
+    print(f"OAuth JSON: {creds_path}")
+    print(f"토큰 저장: {token_path}")
+    print()
+
+    if not creds_path.exists():
         print(
-            "❌ config/client_secret.json 파일이 없습니다.\n\n"
+            f"❌ {creds_path.relative_to(PROJECT_ROOT)} 파일이 없습니다.\n\n"
             "Google Cloud Console에서 다음 단계를 수행하세요:\n"
             "1. https://console.cloud.google.com/ 접속\n"
             "2. 프로젝트 생성 (또는 기존 프로젝트 선택)\n"
             "3. API 및 서비스 → 라이브러리 → 'YouTube Data API v3' 활성화\n"
             "4. API 및 서비스 → 사용자 인증 정보 → OAuth 2.0 클라이언트 ID 생성\n"
             "   - 애플리케이션 유형: '데스크톱 앱'\n"
-            "5. JSON 다운로드 → config/client_secret.json 으로 저장\n"
+            f"5. JSON 다운로드 → {creds_path.relative_to(PROJECT_ROOT)} 으로 저장\n"
         )
         return
 
     flow = InstalledAppFlow.from_client_secrets_file(
-        str(CREDENTIALS_PATH),
+        str(creds_path),
         scopes=SCOPES,
     )
 
@@ -56,11 +100,11 @@ def main() -> None:
         "scopes": credentials.scopes,
     }
 
-    TOKEN_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(TOKEN_PATH, "w", encoding="utf-8") as f:
+    token_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(token_path, "w", encoding="utf-8") as f:
         json.dump(token_data, f, indent=2, ensure_ascii=False)
 
-    print(f"✅ 인증 완료! 토큰 저장: {TOKEN_PATH}")
+    print(f"\n✅ [{args.profile}] 인증 완료! 토큰 저장: {token_path}")
     print("이후 파이프라인 실행 시 자동으로 토큰이 갱신됩니다.")
 
 
