@@ -1,64 +1,7 @@
-# === RSS 피드 소스 ===
-feeds:
-  hankyung_economy:
-    name: "한국경제 경제"
-    url: "https://www.hankyung.com/feed/economy"
-    parser: "hankyung"
-    category: "economy"
-    enabled: true
+# === 공통 설정 (모든 프로필에서 공유) ===
+# 프로필별 설정은 config/profiles/{profile}.yaml에서 override
 
-  hankyung_it:
-    name: "한국경제 IT"
-    url: "https://www.hankyung.com/feed/it"
-    parser: "hankyung"
-    category: "tech"
-    enabled: true
-
-  etnews_ai:
-    name: "전자신문 AI"
-    url: "http://rss.etnews.com/04046.xml"
-    parser: "etnews"
-    category: "ai"
-    enabled: true
-
-  etnews_economy:
-    name: "전자신문 경제"
-    url: "http://rss.etnews.com/02.xml"
-    parser: "etnews"
-    category: "economy"
-    enabled: true
-
-  chosun_economy:
-    name: "조선일보 경제"
-    url: "https://www.chosun.com/arc/outboundfeeds/rss/category/economy/?outputType=xml"
-    parser: "chosun"
-    category: "economy"
-    enabled: true
-
-  # AI타임스: RSS 없음 → HTML 리스트 크롤링
-  aitimes:
-    name: "AI타임스"
-    url: "https://www.aitimes.com/news/articleList.html?sc_section_code=S1N4&view_type=sm"
-    parser: "aitimes"
-    category: "ai"
-    enabled: true
-    mode: "html_list"
-
-# === 스크래핑 설정 ===
-scraping:
-  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-  request_timeout: 15
-  max_retries: 3
-  retry_backoff: 2.0
-  rate_limit_per_domain: 2.0
-  max_articles_per_feed: 20
-
-# === 중복 제거 ===
-dedup:
-  title_similarity_threshold: 0.85
-  lookback_days: 3
-
-# === AI 요약 (Phase 2) ===
+# === AI LLM ===
 summarizer:
   ollama:
     base_url: "http://localhost:11434"
@@ -73,12 +16,8 @@ summarizer:
     model: "claude-sonnet-4-20250514"
     temperature: 0.3
     max_tokens: 2048
-  briefing:
-    max_articles: 8
-    target_length: 300
-    shorts_script_length: 150
 
-# === TTS (Phase 3) ===
+# === TTS ===
 tts:
   edge:
     voice: "ko-KR-SunHiNeural"
@@ -89,13 +28,9 @@ tts:
     speaking_rate: 1.0
     pitch: 0.0
 
-# === 영상 (Phase 4) ===
+# === 영상 스펙 ===
 video:
   width: 1080
   height: 1920
   fps: 30
   max_duration: 59
-
-# === 저장 ===
-storage:
-  base_dir: "data"

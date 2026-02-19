@@ -243,6 +243,49 @@ def download_background(
     return str(file_path)
 
 
+# 명언 영상용 차분한 배경 검색어
+QUOTE_BACKGROUND_QUERIES = [
+    "nature aerial calm landscape",
+    "ocean waves slow motion",
+    "forest morning sunlight",
+    "mountain landscape clouds",
+    "sunset sky timelapse",
+    "rain window close up",
+    "abstract dark elegant particles",
+    "candle flame dark room",
+    "starry night sky",
+    "zen garden peaceful",
+    "autumn leaves falling",
+    "lake reflection calm",
+]
+
+
+def download_background_for_quote(output_dir: str) -> str | None:
+    """명언 영상용 차분한 배경 다운로드."""
+    used_ids = _get_cached_video_ids(output_dir)
+    query = random.choice(QUOTE_BACKGROUND_QUERIES)
+    logger.info(f"명언 배경 검색: '{query}'")
+
+    path = download_background(
+        output_dir=output_dir,
+        query=query,
+        orientation="portrait",
+        exclude_ids=used_ids,
+    )
+
+    if path is None:
+        # 폴백
+        fallback = random.choice(QUOTE_BACKGROUND_QUERIES)
+        path = download_background(
+            output_dir=output_dir,
+            query=fallback,
+            orientation="portrait",
+            exclude_ids=used_ids,
+        )
+
+    return path
+
+
 def _select_video_file(files: list[dict]) -> dict | None:
     """HD 이상, portrait 방향 우선으로 비디오 파일 선택."""
     # height > width인 것 우선 (portrait)

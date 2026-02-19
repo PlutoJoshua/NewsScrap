@@ -60,6 +60,9 @@ class OpenAIProvider(LLMProvider):
             shorts_script=shorts_script,
         )
 
+    def generate_text(self, prompt: str, max_tokens: int | None = None) -> str:
+        return self._chat(prompt)
+
     def _chat(self, prompt: str) -> str:
         resp = self.client.chat.completions.create(
             model=self.model,

@@ -258,6 +258,133 @@ def _make_background_from_video(video_path: str, duration: float) -> VideoFileCl
     return clip.with_duration(duration)
 
 
+def compose_quote_shorts(
+    audio_path: str,
+    subtitles: list[SubtitleEntry],
+    background_path: str | None,
+    output_path: str,
+    quote_text: str,
+    author: str,
+    quote_display_duration: float = 5.0,
+) -> str:
+    """명언 숏츠 영상 합성.
+
+    레이아웃 (1080x1920):
+    - 배경: 자연/추상 영상 + 반투명 어두운 오버레이
+    - 명언 텍스트: 중앙 상단 (y=500), 72px, 흰색
+    - 저자: 명언 아래, 40px, 금색
+    - 해설 자막: 하단 (y=1570), 44px
+    """
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
+    # 1. 오디오 로드
+    audio = AudioFileClip(audio_path)
+    total_duration = audio.duration
+    logger.info(f"오디오 길이: {total_duration:.1f}초")
+
+    # 2. 배경 영상
+    if background_path and Path(background_path).exists():
+        bg = _make_background_from_video(background_path, total_duration)
+    else:
+        bg = ColorClip(size=(WIDTH, HEIGHT), color=(15, 15, 25)).with_duration(total_duration)
+
+    # 3. 반투명 어두운 오버레이 (가독성 향상)
+    overlay = (
+        ColorClip(size=(WIDTH, HEIGHT), color=(0, 0, 0))
+        .with_duration(total_duration)
+        .with_opacity(0.4)
+    )
+
+    clips = [bg, overlay]
+
+    # 4. 명언 텍스트 (0~quote_display_duration초)
+    try:
+        quote_clip = (
+            TextClip(
+                text=f'"{quote_text}"',
+                font_size=64,
+                color="white",
+                font="config/fonts/AppleSDGothicNeo-Bold.ttf",
+                stroke_color="black",
+                stroke_width=3,
+                size=(WIDTH - 120, None),
+                method="caption",
+            )
+            .with_position(("center", 500))
+            .with_start(0)
+            .with_duration(quote_display_duration)
+        )
+        clips.append(quote_clip)
+    except Exception as e:
+        logger.warning(f"명언 텍스트 클립 생성 실패: {e}")
+
+    # 5. 저자 텍스트
+    try:
+        author_clip = (
+            TextClip(
+                text=f"- {author}",
+                font_size=40,
+                color="#FFD700",
+                font="config/fonts/AppleSDGothicNeo-Bold.ttf",
+                size=(WIDTH - 200, None),
+                method="caption",
+            )
+            .with_position(("center", 750))
+            .with_start(0)
+            .with_duration(quote_display_duration)
+        )
+        clips.append(author_clip)
+    except Exception as e:
+        logger.warning(f"저자 텍스트 클립 생성 실패: {e}")
+
+    # 6. 해설 자막 오버레이
+    for entry in subtitles:
+        start = entry.start_ms / 1000.0
+        end = entry.end_ms / 1000.0
+        if end > total_duration:
+            end = total_duration
+
+        try:
+            sub_clip = (
+                TextClip(
+                    text=entry.text,
+                    font_size=44,
+                    color="white",
+                    font="config/fonts/AppleSDGothicNeo-Bold.ttf",
+                    stroke_color="black",
+                    stroke_width=2,
+                    size=(WIDTH - 100, None),
+                    method="caption",
+                )
+                .with_position(("center", HEIGHT - 350))
+                .with_start(start)
+                .with_duration(end - start)
+            )
+            clips.append(sub_clip)
+        except Exception as e:
+            logger.debug(f"자막 클립 생성 실패: {e}")
+
+    # 7. 합성 및 렌더링
+    video = CompositeVideoClip(clips, size=(WIDTH, HEIGHT))
+    video = video.with_audio(audio).with_duration(total_duration)
+
+    logger.info(f"영상 렌더링 중... → {output_path}")
+    video.write_videofile(
+        output_path,
+        fps=FPS,
+        codec="libx264",
+        audio_codec="aac",
+        bitrate="8000k",
+        logger=None,
+    )
+
+    audio.close()
+    video.close()
+
+    logger.info(f"명언 영상 생성 완료: {output_path}")
+    return output_path
+
+
 def _make_title_card(text: str, duration: float) -> TextClip:
     """타이틀 카드 오버레이."""
     return (

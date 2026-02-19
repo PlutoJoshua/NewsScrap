@@ -20,6 +20,11 @@ class LLMProvider(ABC):
         """여러 기사를 종합하여 일일 브리핑 + 숏츠 스크립트 생성."""
         ...
 
+    @abstractmethod
+    def generate_text(self, prompt: str, max_tokens: int | None = None) -> str:
+        """범용 텍스트 생성 (명언 해설 등 프로필별 스크립트 생성용)."""
+        ...
+
     @property
     @abstractmethod
     def provider_name(self) -> str:

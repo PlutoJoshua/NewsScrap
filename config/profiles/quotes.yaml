@@ -1,0 +1,27 @@
+# === 명언/격언 프로필 ===
+
+storage:
+  base_dir: "data/quotes"
+
+# === 명언 콘텐츠 소스 ===
+content:
+  quotes_file: "data/quotes/quotes.json"
+  selection: "random_unused"
+
+# === TTS (차분한 남성 목소리) ===
+tts:
+  edge:
+    voice: "ko-KR-InJoonNeural"
+    rate: "-5%"
+    volume: "+0%"
+
+# === YouTube 업로드 ===
+uploader:
+  enabled: false
+  youtube:
+    privacy: "private"
+    category_id: "22"
+    default_tags: ["명언", "격언", "인생", "지혜", "동기부여", "숏츠"]
+    title_template: "✨ {quote_short} - {author} #명언 #Shorts"
+    credentials_path: "config/quotes_client_secret.json"
+    token_path: "config/quotes_youtube_token.json"

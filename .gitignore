@@ -3,6 +3,14 @@ data/
 *.json
 !config/*.yaml
 
+# YouTube credentials (각 프로필별)
+config/client_secret.json
+config/youtube_token.json
+config/news_client_secret.json
+config/news_youtube_token.json
+config/quotes_client_secret.json
+config/quotes_youtube_token.json
+
 # Environment
 .env
 .venv/

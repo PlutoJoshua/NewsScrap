@@ -58,6 +58,9 @@ class OllamaProvider(LLMProvider):
             shorts_script=shorts_script,
         )
 
+    def generate_text(self, prompt: str, max_tokens: int | None = None) -> str:
+        return self._generate(prompt, max_tokens)
+
     def _generate(self, prompt: str, max_tokens: int | None = None) -> str:
         url = f"{self.base_url}/api/generate"
         payload = {
