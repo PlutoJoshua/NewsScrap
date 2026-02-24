@@ -6,6 +6,7 @@ import json
 import logging
 
 import requests
+import yfinance as yf
 
 from src.storage.models import Article, Briefing, BriefingSegment
 from src.summarizer.base import LLMProvider
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 class OllamaProvider(LLMProvider):
     def __init__(self, config: dict):
         self.base_url = config.get("base_url", "http://localhost:11434")
-        self.model = config.get("model", "gemma2:9b-instruct-q4_K_M")
+        self.model = config.get("model", "gemma3:12b")
         self.temperature = config.get("temperature", 0.3)
         self.max_tokens = config.get("max_tokens", 2048)
 
@@ -36,9 +37,22 @@ class OllamaProvider(LLMProvider):
         return self._generate(prompt)
 
     def generate_briefing(self, articles: list[Article], date: str) -> Briefing:
+        # 환율 데이터 조회 (어제/최근 1일)
+        exchange_rate_info = "수집된 환율 정보 없음"
+        try:
+            krw_data = yf.download("KRW=X", period="1d", progress=False)
+            if not krw_data.empty:
+                close_price = krw_data['Close'].iloc[-1].item()
+                exchange_rate_info = f"- 현재 USD/KRW 환율: 약 {close_price:,.1f}원"
+        except Exception as e:
+            logger.warning(f"환율 정보 조회 실패: {e}")
+
         # 1) 기사 목록 텍스트 구성
         articles_text = self._format_articles(articles)
-        briefing_prompt = BRIEFING_PROMPT.format(articles=articles_text)
+        briefing_prompt = BRIEFING_PROMPT.format(
+            articles=articles_text,
+            exchange_rate=exchange_rate_info,
+        )
         raw_briefing = self._generate(briefing_prompt)
 
         # 2) JSON 파싱
@@ -75,6 +89,16 @@ class OllamaProvider(LLMProvider):
 
         try:
             resp = requests.post(url, json=payload, timeout=300)
+            if resp.status_code == 404:
+                try:
+                    error_msg = resp.json().get("error", "")
+                except Exception:
+                    error_msg = ""
+                error_suffix = f" (상세: {error_msg})" if error_msg else ""
+                raise RuntimeError(
+                    f"Ollama 요청 실패 (404): '{self.model}' 모델이 설치되지 않았습니다. "
+                    f"터미널에서 'ollama pull {self.model}' 명령을 실행해주세요.{error_suffix}"
+                )
             resp.raise_for_status()
             return resp.json().get("response", "").strip()
         except requests.ConnectionError:

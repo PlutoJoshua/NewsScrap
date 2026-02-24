@@ -45,8 +45,8 @@ async def main_async():
 
     parser = argparse.ArgumentParser(description="뉴스/명언 숏츠 파이프라인")
     parser.add_argument(
-        "--profile", default="news", choices=["news", "quotes"],
-        help="프로필 선택 (news: 경제뉴스, quotes: 명언)",
+        "--profile", default="news",
+        help="프로필 선택 (예: news, quotes, 커스텀계정)",
     )
     parser.add_argument("--date", help="대상 날짜 (YYYY-MM-DD)", default=None)
     parser.add_argument("--top", type=int, help="상위 N개 기사만 사용 (news만)", default=None)
@@ -61,8 +61,12 @@ async def main_async():
 
     logger.info(f"프로필: {args.profile} | 날짜: {target_date}")
 
-    # === 명언 프로필 ===
-    if args.profile == "quotes":
+    # 파이프라인 종류 판별: config 내용에 따라 결정
+    # 명언 파이프라인인지 확인 (pipeline_type 필드나 content.quotes_file 존재 여부)
+    is_quotes = config.get("pipeline_type") == "quotes" or "content" in config
+
+    # === 명언 파이프라인 ===
+    if is_quotes:
         from src.pipeline_quotes import run_quotes_pipeline
 
         output = await run_quotes_pipeline(

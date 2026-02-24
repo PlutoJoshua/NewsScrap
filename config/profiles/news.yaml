@@ -71,9 +71,9 @@ summarizer:
 
 # === YouTube 업로드 ===
 uploader:
-  enabled: false
+  enabled: true
   youtube:
-    privacy: "private"
+    privacy: "public"
     category_id: "25"
     default_tags: ["환율", "경제뉴스", "금리", "미국증시", "달러", "경제", "숏츠", "브리핑", "머니샌즈"]
     title_template: "📰 {date} 경제뉴스 환율 금리 브리핑 #Shorts"

@@ -41,6 +41,9 @@ BRIEFING_PROMPT = """\
   ]
 }}
 
+## 어제/오늘 주요 시장 지표 참고 (본문과 연관성 높은 경우 참고)
+{exchange_rate}
+
 ## 오늘의 뉴스 기사들
 {articles}
 

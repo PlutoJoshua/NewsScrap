@@ -24,24 +24,13 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
-# 프로필별 기본 경로
-_PROFILE_PATHS = {
-    "news": {
-        "credentials": "config/news_client_secret.json",
-        "token": "config/news_youtube_token.json",
-    },
-    "quotes": {
-        "credentials": "config/quotes_client_secret.json",
-        "token": "config/quotes_youtube_token.json",
-    },
-}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="YouTube OAuth2 인증")
     parser.add_argument(
-        "--profile", required=True, choices=["news", "quotes"],
-        help="인증할 프로필 (news: 뉴스 채널, quotes: 명언 채널)",
+        "--profile", required=True,
+        help="인증할 프로필 (예: news, quotes, 커스텀계정)",
     )
     args = parser.parse_args()
 
@@ -52,15 +41,14 @@ def main() -> None:
             profile_config = yaml.safe_load(f) or {}
         yt_config = profile_config.get("uploader", {}).get("youtube", {})
         creds_path = PROJECT_ROOT / yt_config.get(
-            "credentials_path", _PROFILE_PATHS[args.profile]["credentials"]
+            "credentials_path", f"config/{args.profile}_client_secret.json"
         )
         token_path = PROJECT_ROOT / yt_config.get(
-            "token_path", _PROFILE_PATHS[args.profile]["token"]
+            "token_path", f"config/{args.profile}_youtube_token.json"
         )
     else:
-        paths = _PROFILE_PATHS[args.profile]
-        creds_path = PROJECT_ROOT / paths["credentials"]
-        token_path = PROJECT_ROOT / paths["token"]
+        creds_path = PROJECT_ROOT / f"config/{args.profile}_client_secret.json"
+        token_path = PROJECT_ROOT / f"config/{args.profile}_youtube_token.json"
 
     print(f"프로필: {args.profile}")
     print(f"OAuth JSON: {creds_path}")

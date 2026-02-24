@@ -11,6 +11,7 @@ from moviepy import (
     CompositeVideoClip,
     TextClip,
     VideoFileClip,
+    ImageClip,
     concatenate_videoclips,
 )
 
@@ -71,8 +72,13 @@ def compose_shorts(
         if bg_path and Path(bg_path).exists():
             bg = _make_background_from_video(bg_path, total_duration)
         else:
-            logger.info("배경 영상 없음 - 단색 배경 사용")
-            bg = ColorClip(size=(WIDTH, HEIGHT), color=(20, 20, 30)).with_duration(total_duration)
+            fallback_path = Path("assets/images/fallback_bg.jpg")
+            if fallback_path.exists():
+                logger.info("배경 영상 없음 - 기본 이미지 배경 사용")
+                bg = _make_background_from_image(str(fallback_path), total_duration)
+            else:
+                logger.info("배경 영상 없음 - 단색 배경 사용")
+                bg = ColorClip(size=(WIDTH, HEIGHT), color=(20, 20, 30)).with_duration(total_duration)
 
     # 3. 타이틀 카드
     clips = [bg]
@@ -207,8 +213,12 @@ def _make_multi_background(
         if path and Path(path).exists():
             clip = _make_background_from_video(path, segment_duration)
         else:
-            color = _SEGMENT_COLORS[i % len(_SEGMENT_COLORS)]
-            clip = ColorClip(size=(WIDTH, HEIGHT), color=color).with_duration(segment_duration)
+            fallback_path = Path("assets/images/fallback_bg.jpg")
+            if fallback_path.exists():
+                clip = _make_background_from_image(str(fallback_path), segment_duration)
+            else:
+                color = _SEGMENT_COLORS[i % len(_SEGMENT_COLORS)]
+                clip = ColorClip(size=(WIDTH, HEIGHT), color=color).with_duration(segment_duration)
 
         clips.append(clip)
 
@@ -255,6 +265,29 @@ def _make_background_from_video(video_path: str, duration: float) -> VideoFileCl
         repeats = int(duration / clip.duration) + 1
         clip = concatenate_videoclips([clip] * repeats)
 
+    return clip.with_duration(duration)
+
+
+def _make_background_from_image(image_path: str, duration: float) -> ImageClip:
+    """이미지 배경을 9:16으로 크롭/리사이즈하여 정적 클립 생성."""
+    clip = ImageClip(image_path)
+    
+    # 9:16 비율로 크롭
+    src_w, src_h = clip.size
+    target_ratio = WIDTH / HEIGHT  # 0.5625
+
+    if src_w / src_h > target_ratio:
+        # 가로가 김 -> 좌우 크롭
+        new_w = int(src_h * target_ratio)
+        x_offset = (src_w - new_w) // 2
+        clip = clip.cropped(x1=x_offset, x2=x_offset + new_w)
+    else:
+        # 세로가 김 -> 상하 크롭
+        new_h = int(src_w / target_ratio)
+        y_offset = (src_h - new_h) // 2
+        clip = clip.cropped(y1=y_offset, y2=y_offset + new_h)
+        
+    clip = clip.resized((WIDTH, HEIGHT))
     return clip.with_duration(duration)
 
 
