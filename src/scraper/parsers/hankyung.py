@@ -42,8 +42,12 @@ class HankyungParser(BaseArticleParser):
                 body = self._clean_text(data.get("articleBody", ""))
                 if not body:
                     continue
+                # JSON-LD의 headline이 카테고리명(예: "경제")으로 나오는 경우가 잦아 DOM에서 직접 추출
+                title_el = soup.select_one("h1.headline, h1, .article_title")
+                title = title_el.get_text(strip=True) if title_el else data.get("headline", "")
+
                 return ArticleContent(
-                    title=data.get("headline", ""),
+                    title=title,
                     body=body,
                     author=self._extract_author_jsonld(data),
                     published_at=_parse_iso(data.get("datePublished")),
@@ -55,7 +59,7 @@ class HankyungParser(BaseArticleParser):
         return None
 
     def _parse_dom(self, soup: BeautifulSoup) -> ArticleContent:
-        title_el = soup.select_one("h1.headline, h1")
+        title_el = soup.select_one("h1.headline, h1, .article_title")
         title = title_el.get_text(strip=True) if title_el else ""
 
         article_div = soup.select_one("#articletxt")

@@ -50,6 +50,7 @@ class OllamaProvider(LLMProvider):
         # 1) 기사 목록 텍스트 구성
         articles_text = self._format_articles(articles)
         briefing_prompt = BRIEFING_PROMPT.format(
+            current_date=date,
             articles=articles_text,
             exchange_rate=exchange_rate_info,
         )
@@ -62,7 +63,16 @@ class OllamaProvider(LLMProvider):
         briefing_summary = "\n".join(
             f"- {s.headline}: {s.summary}" for s in segments
         )
-        script_prompt = SHORTS_SCRIPT_PROMPT.format(briefing=briefing_summary)
+        
+        # 날짜 파싱 (월, 일)
+        y, m, d = date.split("-")
+        script_prompt = SHORTS_SCRIPT_PROMPT.format(
+            current_date=date,
+            month=int(m),
+            day=int(d),
+            exchange_rate=exchange_rate_info,
+            briefing=briefing_summary
+        )
         shorts_script = self._generate(script_prompt, max_tokens=512)
 
         return Briefing(

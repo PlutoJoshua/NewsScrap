@@ -44,8 +44,12 @@ class ChosunParser(BaseArticleParser):
                 body = self._clean_text(data.get("articleBody", ""))
                 if not body:
                     continue
+                # JSON-LD의 headline이 카테고리명으로 나오는 경우가 잦아 DOM에서 직접 추출
+                title_el = soup.select_one("h1, .article-header__title, .news_title")
+                title = title_el.get_text(strip=True) if title_el else data.get("headline", "")
+
                 return ArticleContent(
-                    title=data.get("headline", ""),
+                    title=title,
                     body=body,
                     author=self._get_author(data),
                     published_at=_parse_iso(data.get("datePublished")),
@@ -56,7 +60,7 @@ class ChosunParser(BaseArticleParser):
         return None
 
     def _parse_dom(self, soup: BeautifulSoup) -> ArticleContent:
-        title_el = soup.select_one("h1")
+        title_el = soup.select_one("h1, .article-header__title, .news_title")
         title = title_el.get_text(strip=True) if title_el else ""
 
         # 조선일보 본문 셀렉터들
