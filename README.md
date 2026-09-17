@@ -1,5 +1,9 @@
 # NewsScrap
 
+> 파이프라인 설계 기록: [같은 뉴스가 30번 들어올 때 — 중복 제거 3단계](https://from0lab.com/three-stage-news-deduplication/) ·
+> [수백 건의 뉴스를 LLM 코멘터리 한 편으로](https://from0lab.com/%ec%88%98%eb%b0%b1-%ea%b1%b4%ec%9d%98-%eb%89%b4%ec%8a%a4%eb%a5%bc-llm-%ec%bd%94%eb%a9%98%ed%84%b0%eb%a6%ac-%ed%95%9c-%ed%8e%b8%ec%9c%bc%eb%a1%9c-%ec%b6%9c%eb%a0%a5-%ea%b0%95%ec%a0%9c%ec%99%80/)
+
+
 YouTube 숏츠 자동 생성 파이프라인 — 멀티 프로필 지원
 
 ## 프로필
