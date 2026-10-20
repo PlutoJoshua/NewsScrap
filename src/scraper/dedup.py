@@ -48,20 +48,24 @@ class ArticleDeduplicator:
 
         return unique
 
+    def _lookback_dates(self) -> list[str]:
+        """조회 대상 날짜 문자열 목록 (최근 lookback_days일)."""
+        today = datetime.now()
+        return [
+            (today - timedelta(days=i)).strftime("%Y-%m-%d")
+            for i in range(1, self.lookback_days + 1)
+        ]
+
     def _load_seen_urls(self) -> set[str]:
         urls: set[str] = set()
-        today = datetime.now()
-        for i in range(self.lookback_days):
-            date = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+        for date in self._lookback_dates():
             for a in self.store.load_articles(date):
                 urls.add(_normalize_url(a.url))
         return urls
 
     def _load_seen_titles(self) -> list[str]:
         titles: list[str] = []
-        today = datetime.now()
-        for i in range(self.lookback_days):
-            date = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+        for date in self._lookback_dates():
             for a in self.store.load_articles(date):
                 titles.append(_normalize_title(a.rss_title))
         return titles
@@ -73,11 +77,12 @@ def _normalize_url(url: str) -> str:
 
 
 def _normalize_title(title: str) -> str:
+    """대괄호·소괄호 꼬리표([속보], (종합) 등)와 기호를 제거하고 공백을 정리한다."""
     title = re.sub(r"\[.*?\]", "", title)
     title = re.sub(r"\(.*?\)", "", title)
     title = re.sub(r"[^\w\s]", "", title)
     title = re.sub(r"\s+", " ", title).strip()
-    return title
+    return title.lower()
 
 
 def _is_similar(title: str, seen: list[str], threshold: float) -> bool:
