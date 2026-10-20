@@ -36,8 +36,8 @@ class JSONStore:
             json.dump(data, f, ensure_ascii=False, indent=2, default=str)
 
         logger.info(
-            f"Saved {len(merged)} articles to {file_path} "
-            f"(기존 {len(existing)} + 신규 {len(new_articles)})"
+            f"기사 저장: {file_path} "
+            f"(기존 {len(existing)} + 신규 {len(new_articles)} = {len(merged)})"
         )
         return file_path
 
@@ -47,10 +47,14 @@ class JSONStore:
         if not file_path.exists():
             return []
 
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        return [Article.model_validate(item) for item in data]
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return [Article.model_validate(item) for item in data]
+        except Exception as e:
+            # 손상된 파일이나 스키마 변경으로 파이프라인 전체가 멈추지 않도록 한다
+            logger.warning(f"기사 파일 로드 실패, 빈 목록으로 진행: {file_path} ({e})")
+            return []
 
     def save_briefing(self, date: str, briefing_data: dict) -> Path:
         """브리핑 데이터 저장."""
