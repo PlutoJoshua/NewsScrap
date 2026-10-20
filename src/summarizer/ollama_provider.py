@@ -6,10 +6,10 @@ import json
 import logging
 
 import requests
-import yfinance as yf
 
 from src.storage.models import Article, Briefing, BriefingSegment
 from src.summarizer.base import LLMProvider
+from src.summarizer.fx import fetch_usd_krw
 from src.summarizer.prompt_templates import (
     BRIEFING_PROMPT,
     SHORTS_SCRIPT_PROMPT,
@@ -37,15 +37,9 @@ class OllamaProvider(LLMProvider):
         return self._generate(prompt)
 
     def generate_briefing(self, articles: list[Article], date: str) -> Briefing:
-        # 환율 데이터 조회 (어제/최근 1일)
-        exchange_rate_info = "수집된 환율 정보 없음"
-        try:
-            krw_data = yf.download("KRW=X", period="1d", progress=False)
-            if not krw_data.empty:
-                close_price = krw_data['Close'].iloc[-1].item()
-                exchange_rate_info = f"- 현재 USD/KRW 환율: 약 {close_price:,.1f}원"
-        except Exception as e:
-            logger.warning(f"환율 정보 조회 실패: {e}")
+        # 환율 데이터 조회 (종가 + 전일 대비 변동률)
+        quote = fetch_usd_krw()
+        exchange_rate_info = quote.describe() if quote else "수집된 환율 정보 없음"
 
         # 1) 기사 목록 텍스트 구성
         articles_text = self._format_articles(articles)
